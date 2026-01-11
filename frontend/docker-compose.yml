@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: doc_frontend
+    restart: always
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      # These must be set at build time or runtime depending on Next.js config
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:8000/ws}
+    networks:
+      - frontend_network
+
+networks:
+  frontend_network:
+    driver: bridge
