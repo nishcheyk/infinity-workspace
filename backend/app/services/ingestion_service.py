@@ -181,3 +181,131 @@ async def process_document(doc_id: str, file_path: str, user_id: str):
             },
             user_id,
         )
+
+
+def scrape_url_sync(url: str) -> str:
+    """
+    Scrape a URL using Playwright (Sync API) and extract clean text.
+    This is used in a thread pool to avoid event loop issues on Windows.
+    """
+    from playwright.sync_api import sync_playwright
+    from bs4 import BeautifulSoup
+
+    with sync_playwright() as p:
+        print(f"[*] Launching browser for: {url}")
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        try:
+            print(f"[*] Navigating to: {url}")
+            # Add a timeout and wait until network is somewhat idle
+            page.goto(url, wait_until="networkidle", timeout=60000)
+            print(f"[*] Page loaded, extracting content...")
+            content = page.content()
+            
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+
+            # Get text
+            text = soup.get_text()
+            print(f"[*] Extracted {len(text)} characters of raw text")
+
+            # Break into lines and remove leading and trailing whitespace
+            lines = (line.strip() for line in text.splitlines())
+            # Break multi-headlines into a line each
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            # Drop blank lines
+            text = '\n'.join(chunk for chunk in chunks if chunk)
+            
+            return text
+        finally:
+            browser.close()
+
+
+async def process_url(doc_id: str, url: str, user_id: str):
+    """
+    Background task to process a URL.
+    """
+    import asyncio
+    db = mongo_db.db
+    try:
+        await db.documents.update_one(
+            {"_id": ObjectId(doc_id)}, {"$set": {"status": "processing"}}
+        )
+
+        # 1. Scrape (using sync method in thread pool)
+        text_content = await asyncio.to_thread(scrape_url_sync, url)
+        if not text_content:
+            raise Exception("No text content found on the page.")
+
+        # 2. Chunking (Simple character-based for now, similar to process_document)
+        chunks = []
+        CHUNK_SIZE = 1000
+        for i in range(0, len(text_content), CHUNK_SIZE):
+            chunks.append(text_content[i : i + CHUNK_SIZE])
+
+        # 3. Embed & Upsert
+        model = get_embedding_model()
+        vectors = model.encode(chunks)
+        
+        points = []
+        import uuid
+        from qdrant_client.models import PointStruct
+
+        for i, chunk in enumerate(chunks):
+            vector = vectors[i].tolist()
+            points.append(
+                PointStruct(
+                    id=str(uuid.uuid4()),
+                    vector=vector,
+                    payload={
+                        "doc_id": doc_id,
+                        "user_id": user_id,
+                        "filename": url,  # Using URL as filename for reference
+                        "text": chunk,
+                        "chunk_index": i,
+                    },
+                )
+            )
+
+        # Ensure collection exists
+        try:
+            qdrant_db.client.create_collection(
+                collection_name="documents",
+                vectors_config={"size": 384, "distance": "Cosine"},
+            )
+        except Exception:
+            pass
+
+        qdrant_db.client.upsert(collection_name="documents", points=points)
+
+        # 4. Update Status
+        await db.documents.update_one(
+            {"_id": ObjectId(doc_id)},
+            {"$set": {"status": "completed", "chunks": len(chunks)}},
+        )
+
+        # Broadcast success
+        from app.websockets.connection_manager import manager
+        await manager.broadcast_to_user(
+            {"type": "ingestion_status", "doc_id": doc_id, "status": "completed"},
+            user_id,
+        )
+
+    except Exception as e:
+        print(f"Error processing URL {url}: {e}")
+        await db.documents.update_one(
+            {"_id": ObjectId(doc_id)}, {"$set": {"status": "failed", "error": str(e)}}
+        )
+        from app.websockets.connection_manager import manager
+        await manager.broadcast_to_user(
+            {
+                "type": "ingestion_status",
+                "doc_id": doc_id,
+                "status": "failed",
+                "error": str(e),
+            },
+            user_id,
+        )

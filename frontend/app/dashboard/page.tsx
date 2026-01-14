@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Button,
@@ -24,8 +24,11 @@ import {
     DeleteOutlined,
     PlusOutlined,
     HistoryOutlined,
-    MenuOutlined
+    MenuOutlined,
+    GlobalOutlined,
+    SendOutlined
 } from '@ant-design/icons';
+import { Input } from 'antd';
 import type { UploadProps } from 'antd';
 import { useAuth } from '../../context/AuthContext';
 import { useWebSocket } from '../../context/WebSocketContext';
@@ -60,6 +63,9 @@ export default function Dashboard() {
     const [settingsVisible, setSettingsVisible] = useState(false);
     const [historyDrawerVisible, setHistoryDrawerVisible] = useState(false);
     const [sidebarVisible, setSidebarVisible] = useState(true);
+    const [scrapeUrl, setScrapeUrl] = useState('');
+    const [isScraping, setIsScraping] = useState(false);
+    const initializationStarted = useRef(false);
 
     const isMobile = !screens.md;
 
@@ -109,8 +115,9 @@ export default function Dashboard() {
             setSessions(chatSessions);
 
             // Auto-create if zero sessions found
-            if (chatSessions.length === 0) {
+            if (chatSessions.length === 0 && !initializationStarted.current) {
                 console.log('[Dashboard] No sessions found, auto-creating...');
+                initializationStarted.current = true;
                 await handleNewChat();
                 return;
             }
@@ -207,6 +214,26 @@ export default function Dashboard() {
         },
     };
 
+    const handleScrape = async () => {
+        if (!scrapeUrl.trim() || !token) return;
+        try {
+            setIsScraping(true);
+            await apiFetch<any>('/ingestion/scrape', {
+                method: 'POST',
+                token,
+                body: JSON.stringify({ url: scrapeUrl })
+            });
+            notification.info({ message: 'Scraping initialized', description: `Extracting intelligence from ${scrapeUrl}` });
+            setScrapeUrl('');
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            notification.error({ message: 'Scraping failed', description: 'Ensure the URL is accessible' });
+        } finally {
+            setIsScraping(false);
+        }
+    };
+
     const renderHistoryContent = () => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%', overflowY: 'auto', paddingBottom: 20 }}>
             <div>
@@ -256,6 +283,34 @@ export default function Dashboard() {
             </div>
 
             <div style={{ flex: 1 }}>
+                <Title level={5} style={{ color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <GlobalOutlined /> Intelligence Scrape
+                </Title>
+                <div style={{ marginBottom: 24 }}>
+                    <Input
+                        placeholder="https://example.com"
+                        value={scrapeUrl}
+                        onChange={(e) => setScrapeUrl(e.target.value)}
+                        onPressEnter={handleScrape}
+                        suffix={
+                            <Button
+                                type="text"
+                                icon={<SendOutlined />}
+                                loading={isScraping}
+                                onClick={handleScrape}
+                                style={{ color: 'var(--accent-primary)' }}
+                            />
+                        }
+                        style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '12px',
+                            color: '#fff'
+                        }}
+                    />
+                    <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: 'block' }}>Playwright-powered deep extraction</Text>
+                </div>
+
                 <Title level={5} style={{ color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <FileTextOutlined /> Knowledge Base
                 </Title>

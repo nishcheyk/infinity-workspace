@@ -1,20 +1,37 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Form, Input, Button, Typography, Alert, Space } from 'antd';
+import { Typography, Alert, Button, Form } from 'antd';
 import { UserOutlined, LockOutlined, RobotOutlined } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../lib/api';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import AuthFormItem from '../../components/ui/AuthFormItem';
 
 const { Title, Text } = Typography;
+
+const schema = yup.object().shape({
+    email: yup.string().email('Invalid email').required('Please input your Email!'),
+    password: yup.string().required('Please input your Password!'),
+});
 
 export default function LoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
 
-    const onFinish = async (values: { email: string; password: string }) => {
+    const { control, handleSubmit, formState: { errors } } = useForm({
+        resolver: yupResolver(schema),
+        defaultValues: {
+            email: '',
+            password: '',
+        }
+    });
+
+    const onSubmit = async (values: any) => {
         setError('');
         setLoading(true);
         try {
@@ -46,38 +63,31 @@ export default function LoginPage() {
 
                 {error && (
                     <Alert
-                        message={error}
+                        title={error}
                         type="error"
                         showIcon
                         style={{ marginBottom: 24, borderRadius: 12, background: 'rgba(255, 77, 79, 0.1)', border: '1px solid rgba(255, 77, 79, 0.2)', color: '#fff' }}
                     />
                 )}
 
-                <Form
-                    name="login_form"
-                    onFinish={onFinish}
-                    size="large"
-                    layout="vertical"
-                >
-                    <Form.Item
+                <form onSubmit={handleSubmit(onSubmit)}>
+                    <AuthFormItem
                         name="email"
-                        rules={[{ required: true, message: 'Please input your Email!' }, { type: 'email', message: 'Invalid email' }]}
-                    >
-                        <Input
-                            prefix={<UserOutlined style={{ color: 'rgba(255,255,255,0.4)' }} />}
-                            placeholder="Email address"
-                        />
-                    </Form.Item>
+                        control={control}
+                        errors={errors}
+                        placeholder="Email address"
+                        prefix={<UserOutlined />}
+                        type="email"
+                    />
 
-                    <Form.Item
+                    <AuthFormItem
                         name="password"
-                        rules={[{ required: true, message: 'Please input your Password!' }]}
-                    >
-                        <Input.Password
-                            prefix={<LockOutlined style={{ color: 'rgba(255,255,255,0.4)' }} />}
-                            placeholder="Password"
-                        />
-                    </Form.Item>
+                        control={control}
+                        errors={errors}
+                        placeholder="Password"
+                        prefix={<LockOutlined />}
+                        type="password"
+                    />
 
                     <Form.Item style={{ marginBottom: 16 }}>
                         <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 48, fontSize: 16, fontWeight: 600 }}>
@@ -90,7 +100,7 @@ export default function LoginPage() {
                             New here? <Link href="/signup">Create workspace account</Link>
                         </Text>
                     </div>
-                </Form>
+                </form>
             </div>
         </div>
     );

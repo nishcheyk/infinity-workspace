@@ -1,20 +1,42 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Form, Input, Button, Typography, Alert, message, Space } from 'antd';
+import { Input, Button, Typography, Alert, message, Form } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, RobotOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '../../lib/api';
-
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import AuthFormItem from '../../components/ui/AuthFormItem';
 const { Title, Text } = Typography;
+
+const schema = yup.object().shape({
+    fullName: yup.string().required('Please input your Full Name!'),
+    email: yup.string().email('Invalid email').required('Please input your Email!'),
+    password: yup.string().min(6, 'Password must be at least 6 characters').required('Please input your Password!'),
+    confirm: yup.string()
+        .oneOf([yup.ref('password')], 'Passwords do not match!')
+        .required('Please confirm your password!'),
+});
 
 export default function SignupPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const onFinish = async (values: any) => {
+    const { control, handleSubmit, formState: { errors } } = useForm({
+        resolver: yupResolver(schema),
+        defaultValues: {
+            fullName: '',
+            email: '',
+            password: '',
+            confirm: '',
+        }
+    });
+
+    const onSubmit = async (values: any) => {
         setError('');
         setLoading(true);
         try {
@@ -51,48 +73,48 @@ export default function SignupPage() {
 
                 {error && (
                     <Alert
-                        message={error}
+                        title={error}
                         type="error"
                         showIcon
                         style={{ marginBottom: 24, borderRadius: 12, background: 'rgba(255, 77, 79, 0.1)', border: '1px solid rgba(255, 77, 79, 0.2)', color: '#fff' }}
                     />
                 )}
 
-                <Form
-                    name="signup_form"
-                    onFinish={onFinish}
-                    size="large"
-                    layout="vertical"
-                >
-                    <Form.Item
+                <form onSubmit={handleSubmit(onSubmit)}>
+                    <AuthFormItem
                         name="fullName"
-                        rules={[{ required: true, message: 'Please input your Full Name!' }]}
-                    >
-                        <Input
-                            prefix={<UserOutlined style={{ color: 'rgba(255,255,255,0.4)' }} />}
-                            placeholder="Full Name"
-                        />
-                    </Form.Item>
+                        control={control}
+                        errors={errors}
+                        placeholder="Full Name"
+                        prefix={<UserOutlined />}
+                    />
 
-                    <Form.Item
+                    <AuthFormItem
                         name="email"
-                        rules={[{ required: true, message: 'Please input your Email!' }, { type: 'email', message: 'Invalid email' }]}
-                    >
-                        <Input
-                            prefix={<MailOutlined style={{ color: 'rgba(255,255,255,0.4)' }} />}
-                            placeholder="Email address"
-                        />
-                    </Form.Item>
+                        control={control}
+                        errors={errors}
+                        placeholder="Email address"
+                        prefix={<MailOutlined />}
+                        type="email"
+                    />
 
-                    <Form.Item
+                    <AuthFormItem
                         name="password"
-                        rules={[{ required: true, message: 'Please input your Password!' }, { min: 6, message: 'Password must be at least 6 characters' }]}
-                    >
-                        <Input.Password
-                            prefix={<LockOutlined style={{ color: 'rgba(255,255,255,0.4)' }} />}
-                            placeholder="Password"
-                        />
-                    </Form.Item>
+                        control={control}
+                        errors={errors}
+                        placeholder="Password"
+                        prefix={<LockOutlined />}
+                        type="password"
+                    />
+
+                    <AuthFormItem
+                        name="confirm"
+                        control={control}
+                        errors={errors}
+                        placeholder="Confirm Password"
+                        prefix={<LockOutlined />}
+                        type="password"
+                    />
 
                     <Form.Item style={{ marginBottom: 16 }}>
                         <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 48, fontSize: 16, fontWeight: 600 }}>
@@ -105,7 +127,7 @@ export default function SignupPage() {
                             Already a member? <Link href="/login">Return to workspace</Link>
                         </Text>
                     </div>
-                </Form>
+                </form>
             </div>
         </div>
     );

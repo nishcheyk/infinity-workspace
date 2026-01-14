@@ -62,6 +62,53 @@ docker-compose up -d --build
 
 ---
 
+## Local Development (Native)
+
+For manual setup without Docker, follow these steps.
+
+### 1. Prerequisites
+- Python 3.10+
+- Node.js 18+ & npm
+- MongoDB & Qdrant (You can still use Docker for these infrastructure services)
+  ```bash
+  # Start ONLY infrastructure
+  cd backend
+  docker-compose up -d mongo qdrant
+  ```
+
+### 2. Backend Setup
+1.  **Create Virtual Environment**:
+    ```bash
+    cd backend
+    python -m venv venv
+    .\venv\Scripts\activate  # Windows
+    # source venv/bin/activate # Linux/macOS
+    ```
+2.  **Install Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **Environment Variables**:
+    Ensure `backend/.env` exists (copy from `.env.example`).
+4.  **Run Server**:
+    ```bash
+    uvicorn app.main:app --reload --port 8000
+    ```
+
+### 3. Frontend Setup
+1.  **Install Dependencies**:
+    ```bash
+    cd frontend
+    npm install
+    ```
+2.  **Run Development Server**:
+    ```bash
+    npm run dev
+    ```
+    The application will be available at `http://localhost:3000`.
+
+---
+
 ## Deployment Configuration
 
 For production, ensure `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` in the frontend are pointed to your hosted backend instance.

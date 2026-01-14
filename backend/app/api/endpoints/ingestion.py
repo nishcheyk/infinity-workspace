@@ -48,6 +48,41 @@ async def upload_document(
     return {"id": doc_id, "filename": file.filename, "status": "pending"}
 
 
+@router.post("/scrape", response_model=Any)
+async def scrape_website(
+    background_tasks: BackgroundTasks,
+    payload: dict,
+    current_user: UserResponse = Depends(deps.get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+) -> Any:
+    """
+    Scrape a website URL for ingestion.
+    """
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    # Create initial document record
+    doc_data = {
+        "user_id": str(current_user.id),
+        "filename": url,
+        "content_type": "text/html",
+        "status": "pending",
+        "upload_timestamp": ingestion_service.get_timestamp(),
+        "chunks": 0,
+    }
+
+    result = await db.documents.insert_one(doc_data)
+    doc_id = str(result.inserted_id)
+
+    # Trigger background ingestion
+    background_tasks.add_task(
+        ingestion_service.process_url, doc_id, url, str(current_user.id)
+    )
+
+    return {"id": doc_id, "filename": url, "status": "pending"}
+
+
 @router.get("/documents", response_model=Any)
 async def list_documents(
     current_user: UserResponse = Depends(deps.get_current_user),

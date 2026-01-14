@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Input, Button, List, Typography, Grid, theme, Avatar, Space, Badge } from 'antd';
-import { SendOutlined, AudioOutlined, UserOutlined, RobotOutlined, StopOutlined, SoundOutlined, LoadingOutlined, HistoryOutlined, PlusOutlined } from '@ant-design/icons';
+import { Input, Button, List, Typography, Grid, theme, Avatar, Space, Badge, Tooltip, notification } from 'antd';
+import { SendOutlined, AudioOutlined, UserOutlined, RobotOutlined, StopOutlined, SoundOutlined, LoadingOutlined, HistoryOutlined, PlusOutlined, CopyOutlined, LikeOutlined, DislikeOutlined, DownloadOutlined, CheckOutlined } from '@ant-design/icons';
 import { useSettings } from '../../context/SettingsContext';
 import { useWebSocket } from '../../context/WebSocketContext';
 import { apiFetch } from '../../lib/api';
@@ -34,6 +34,8 @@ export default function ChatInterface({ sessionId, onShowHistory, onCreateNew, o
     const { voiceURI, availableVoices, autoPlay, primaryColor } = useSettings();
     const { sendMessage, isConnected, subscribe } = useWebSocket();
     const { token } = useAuth();
+    const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+    const [reactions, setReactions] = useState<Record<number, 'like' | 'dislike' | undefined>>({});
     const screens = useBreakpoint();
     const themeToken = useToken().token;
 
@@ -173,6 +175,30 @@ export default function ChatInterface({ sessionId, onShowHistory, onCreateNew, o
         }
     };
 
+    const handleCopy = (text: string, idx: number) => {
+        navigator.clipboard.writeText(text);
+        setCopiedIdx(idx);
+        setTimeout(() => setCopiedIdx(null), 2000);
+        notification.success({ message: 'Copied to clipboard', placement: 'bottomRight', duration: 1 });
+    };
+
+    const handleReaction = (idx: number, type: 'like' | 'dislike') => {
+        setReactions(prev => ({ ...prev, [idx]: prev[idx] === type ? undefined : type }));
+    };
+
+    const downloadChat = () => {
+        const content = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chat-history-${sessionId || 'export'}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     const handleSubmit = async () => {
         if (!input.trim() || !isConnected || !sessionId) return;
 
@@ -299,6 +325,44 @@ export default function ChatInterface({ sessionId, onShowHistory, onCreateNew, o
                                         whiteSpace: 'pre-wrap'
                                     }}>
                                         {msg.content}
+                                        {msg.role === 'assistant' && (
+                                            <div style={{
+                                                marginTop: 12,
+                                                display: 'flex',
+                                                gap: 16,
+                                                borderTop: '1px solid rgba(255,255,255,0.05)',
+                                                paddingTop: 8,
+                                                opacity: 0.6
+                                            }}>
+                                                <Tooltip title="Copy">
+                                                    <Button
+                                                        type="text"
+                                                        size="small"
+                                                        icon={copiedIdx === idx ? <CheckOutlined style={{ color: '#52c41a' }} /> : <CopyOutlined />}
+                                                        onClick={() => handleCopy(msg.content, idx)}
+                                                        style={{ color: '#fff', fontSize: 12, padding: 0, height: 'auto' }}
+                                                    />
+                                                </Tooltip>
+                                                <div style={{ display: 'flex', gap: 8 }}>
+                                                    <LikeOutlined
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            color: reactions[idx] === 'like' ? 'var(--accent-primary)' : '#fff',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        onClick={() => handleReaction(idx, 'like')}
+                                                    />
+                                                    <DislikeOutlined
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            color: reactions[idx] === 'dislike' ? '#ff4d4f' : '#fff',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        onClick={() => handleReaction(idx, 'dislike')}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -338,6 +402,17 @@ export default function ChatInterface({ sessionId, onShowHistory, onCreateNew, o
                     gap: isMobile ? 4 : 8,
                     boxShadow: '0 10px 40px rgba(0,0,0,0.6)'
                 }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        <Tooltip title="Download History">
+                            <Button
+                                type="text"
+                                icon={<DownloadOutlined />}
+                                onClick={downloadChat}
+                                disabled={messages.length === 0}
+                                style={{ color: 'rgba(255,255,255,0.5)', width: isMobile ? 36 : 40, height: isMobile ? 36 : 40 }}
+                            />
+                        </Tooltip>
+                    </div>
                     <TextArea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
