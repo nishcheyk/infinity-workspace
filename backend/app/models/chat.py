@@ -1,17 +1,16 @@
 from datetime import datetime
-from typing import Optional, List, Annotated
-from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
+from typing import Annotated, Optional
+
 from bson import ObjectId
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 # Helper to automatically convert ObjectId to string
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
+
 class MongoBaseModel(BaseModel):
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-        json_encoders={ObjectId: str}
-    )
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True, json_encoders={ObjectId: str})
+
 
 class ChatMessage(MongoBaseModel):
     id: Optional[PyObjectId] = Field(None, alias="_id")
@@ -19,6 +18,7 @@ class ChatMessage(MongoBaseModel):
     role: str  # 'user' or 'assistant'
     content: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
 
 class ChatSession(MongoBaseModel):
     id: Optional[PyObjectId] = Field(None, alias="_id")
@@ -33,8 +33,10 @@ class ChatSession(MongoBaseModel):
             d["id"] = str(d["_id"])
         return d
 
+
 class ChatSessionResponse(ChatSession):
     pass
 
+
 class ChatHistoryResponse(BaseModel):
-    messages: List[ChatMessage]
+    messages: list[ChatMessage]

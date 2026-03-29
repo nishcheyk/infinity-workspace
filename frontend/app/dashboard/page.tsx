@@ -33,8 +33,9 @@ import type { UploadProps } from 'antd';
 import { useAuth } from '../../context/AuthContext';
 import { useWebSocket } from '../../context/WebSocketContext';
 import { apiFetch } from '../../lib/api';
-import ChatInterface from '../../components/dashboard/ChatInterface';
-import SettingsModal from '../../components/dashboard/SettingsModal';
+import ChatInterface from '../../components/features/chat/ChatInterface';
+import SettingsModal from '../../components/shared/SettingsModal';
+import KnowledgeGraph from '../../components/features/knowledge-graph/KnowledgeGraph';
 
 const { Text, Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -43,6 +44,7 @@ interface Document {
     id: string;
     filename: string;
     status: string;
+    progress?: number;
 }
 
 export default function Dashboard() {
@@ -141,6 +143,29 @@ export default function Dashboard() {
         if (token) fetchData();
     }, [token]);
 
+    // Listen for WebSocket document status updates
+    useEffect(() => {
+        if (lastMessage) {
+            try {
+                const data = JSON.parse(lastMessage);
+
+                // Handle document status updates (Standardized to 'doc_status')
+                if ((data.type === 'document_status' || data.type === 'doc_status') && data.doc_id) {
+                    console.log('[Dashboard] Document status update:', data.status, data.progress);
+
+                    // Update the document in the list
+                    setDocuments(prev => prev.map(doc =>
+                        doc.id === data.doc_id
+                            ? { ...doc, status: data.status, progress: data.progress }
+                            : doc
+                    ));
+                }
+            } catch (e) {
+                // Not JSON or not a document update
+            }
+        }
+    }, [lastMessage]);
+
     const handleNewChat = async () => {
         try {
             console.log('[Dashboard] Creating new chat session...');
@@ -176,18 +201,46 @@ export default function Dashboard() {
         }
     };
 
+    // Listen for SSE updates
     useEffect(() => {
-        if (!lastMessage) return;
-        if (lastMessage.type === 'ingestion_status') {
-            const { doc_id, status, filename } = lastMessage;
-            setDocuments(prev => {
-                const exists = prev.find(d => d.id === doc_id);
-                if (exists) return prev.map(d => d.id === doc_id ? { ...d, status } : d);
-                return [{ id: doc_id, filename, status }, ...prev];
-            });
-            if (status === 'completed') notification.success({ message: `Processed: ${filename}` });
-        }
-    }, [lastMessage]);
+        if (!token) return;
+
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+        const eventSource = new EventSource(`${API_URL}/ingestion/sync-stream?token=${token}`);
+
+        eventSource.addEventListener('update', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'doc_status') {
+                    const { doc_id, status, filename, progress } = data;
+
+                    setDocuments(prev => {
+                        const exists = prev.find(d => d.id === doc_id);
+                        if (exists) return prev.map(d => d.id === doc_id ? { ...d, status, progress } : d);
+                        return [{ id: doc_id, filename, status, progress }, ...prev];
+                    });
+
+                    if (status === 'completed') {
+                        notification.success({ message: `Intelligence Ready: ${filename || 'Document'}` });
+                        fetchData(); // Refresh to get summary/tags
+                    } else if (status === 'failed') {
+                        notification.error({ message: `Processing Failed: ${filename || 'Document'}` });
+                    }
+                }
+            } catch (err) {
+                console.error('SSE Parsing error:', err);
+            }
+        });
+
+        eventSource.onerror = (err) => {
+            console.error('SSE Error:', err);
+            eventSource.close();
+        };
+
+        return () => {
+            eventSource.close();
+        };
+    }, [token]);
 
     const handleDeleteDoc = async (docId: string) => {
         try {
@@ -321,29 +374,127 @@ export default function Dashboard() {
                         </div>
                     )}
                     {documents.map(doc => (
-                        <div
+                        <Tooltip
                             key={doc.id}
-                            style={{
-                                padding: '10px 12px',
-                                borderRadius: '10px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid var(--glass-border)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px'
-                            }}
+                            title={
+                                <div style={{ padding: '8px' }}>
+                                    <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 4, marginBottom: 8 }}>AI Insights</div>
+                                    <div style={{ marginBottom: 12 }}>{(doc as any).summary || "Generating summary..."}</div>
+                                    {(doc as any).suggestions && (doc as any).suggestions.length > 0 && (
+                                        <>
+                                            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>Try Asking:</div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                {(doc as any).suggestions.map((s: string, sIdx: number) => (
+                                                    <div
+                                                        key={sIdx}
+                                                        onClick={() => {
+                                                            const chatComp = document.getElementById('chat-input-area') as HTMLTextAreaElement;
+                                                            if (chatComp) {
+                                                                chatComp.value = s;
+                                                                chatComp.focus();
+                                                                // Trigger change for React
+                                                                const event = new Event('input', { bubbles: true });
+                                                                chatComp.dispatchEvent(event);
+                                                            }
+                                                        }}
+                                                        style={{ fontSize: '11px', color: 'var(--accent-primary)', cursor: 'pointer', fontStyle: 'italic', padding: '4px', background: 'rgba(255,255,255,0.02)', borderRadius: 4 }}
+                                                    >
+                                                        "{s}"
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            }
+                            placement="right"
                         >
-                            <FileTextOutlined style={{ color: doc.status === 'completed' ? '#52c41a' : '#faad14' }} />
-                            <Text ellipsis style={{ flex: 1, color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>{doc.filename}</Text>
-                            <Popconfirm title="Remove doc?" onConfirm={() => handleDeleteDoc(doc.id)}>
-                                <DeleteOutlined style={{ fontSize: 12, opacity: 0.4 }} />
-                            </Popconfirm>
-                        </div>
+                            <div
+                                key={doc.id}
+                                style={{
+                                    padding: '10px 12px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid var(--glass-border)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px',
+                                    cursor: 'help'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                                    <FileTextOutlined style={{ color: doc.status === 'completed' ? '#52c41a' : doc.status === 'analyzing' ? 'var(--accent-primary)' : '#faad14' }} />
+                                    <Text ellipsis style={{ flex: 1, color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>{doc.filename}</Text>
+                                    <Popconfirm title="Remove doc?" onConfirm={() => handleDeleteDoc(doc.id)}>
+                                        <DeleteOutlined style={{ fontSize: 12, opacity: 0.4 }} />
+                                    </Popconfirm>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 24 }}>
+                                    {/* Progress bar for processing states */}
+                                    {['fetching', 'fetched', 'parsing', 'parsed', 'chunking', 'chunked', 'embedding', 'embedded', 'storing', 'stored', 'analyzing'].includes(doc.status) && (
+                                        <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden', marginRight: 8 }}>
+                                            <div style={{
+                                                height: '100%',
+                                                background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
+                                                width: `${doc.progress ? `${doc.progress}%` : (
+                                                    doc.status === 'fetching' ? '10%' :
+                                                        doc.status === 'fetched' ? '20%' :
+                                                            doc.status === 'parsing' ? '30%' :
+                                                                doc.status === 'parsed' ? '40%' :
+                                                                    doc.status === 'chunking' ? '50%' :
+                                                                        doc.status === 'chunked' ? '60%' :
+                                                                            doc.status === 'embedding' ? '70%' :
+                                                                                doc.status === 'embedded' ? '80%' :
+                                                                                    doc.status === 'storing' ? '85%' :
+                                                                                        doc.status === 'stored' ? '90%' :
+                                                                                            doc.status === 'analyzing' ? '95%' : '0%'
+                                                )}`,
+                                                transition: 'width 0.3s ease'
+                                            }} />
+                                        </div>
+                                    )}
+                                    <div style={{
+                                        fontSize: 9,
+                                        textTransform: 'uppercase',
+                                        color: doc.status === 'completed' ? '#52c41a' :
+                                            doc.status === 'failed' ? '#ff4d4f' :
+                                                'var(--accent-primary)',
+                                        background: 'rgba(255,255,255,0.02)',
+                                        padding: '1px 4px',
+                                        borderRadius: 4
+                                    }}>
+                                        {doc.status === 'fetching' ? '⬇️ Fetching' :
+                                            doc.status === 'fetched' ? '✓ Fetched' :
+                                                doc.status === 'parsing' ? '📝 Parsing' :
+                                                    doc.status === 'parsed' ? '✓ Parsed' :
+                                                        doc.status === 'chunking' ? '✂️ Chunking' :
+                                                            doc.status === 'chunked' ? '✓ Chunked' :
+                                                                doc.status === 'embedding' ? '🔢 Embedding' :
+                                                                    doc.status === 'embedded' ? '✓ Embedded' :
+                                                                        doc.status === 'storing' ? '💾 Storing' :
+                                                                            doc.status === 'stored' ? '✓ Stored' :
+                                                                                doc.status === 'analyzing' ? '🤖 Analyzing' :
+                                                                                    doc.status === 'completed' ? '✅ Complete' :
+                                                                                        doc.status === 'failed' ? '❌ Failed' :
+                                                                                            doc.status}
+                                    </div>
+                                    {(doc as any).tags && Array.isArray((doc as any).tags) && (doc as any).tags.length > 0 && (
+                                        <div style={{ display: 'flex', gap: 4, overflow: 'hidden' }}>
+                                            {(doc as any).tags.slice(0, 2).map((tag: string, tIdx: number) => (
+                                                <span key={tIdx} style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)' }}>#{tag}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </Tooltip>
                     ))}
                 </div>
             </div>
         </div>
     );
+
+    const [showGraph, setShowGraph] = useState(false);
 
     if (isLoading || !user) return <div className="mesh-gradient" />;
 
@@ -356,6 +507,7 @@ export default function Dashboard() {
                 <div className="glass-panel" style={{ width: '70px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', gap: '20px' }}>
                     <Avatar size={40} icon={<RobotOutlined />} style={{ background: 'var(--accent-primary)', marginBottom: 20 }} />
                     <Tooltip title="New Chat" placement="right"><Button type="text" icon={<PlusOutlined />} onClick={handleNewChat} style={{ color: '#fff', fontSize: 20 }} /></Tooltip>
+                    <Tooltip title="Neural Map" placement="right"><Button type="text" icon={<GlobalOutlined />} onClick={() => setShowGraph(true)} style={{ color: showGraph ? 'var(--accent-primary)' : '#fff', fontSize: 22 }} /></Tooltip>
                     <Tooltip title="Documents" placement="right"><Upload {...uploadProps}><Button type="text" icon={<UploadOutlined />} style={{ color: '#fff', fontSize: 20 }} /></Upload></Tooltip>
                     <div style={{ flex: 1 }} />
                     <Tooltip title="Toggle History" placement="right"><Button type="text" icon={<HistoryOutlined />} onClick={() => setSidebarVisible(!sidebarVisible)} style={{ color: '#fff', fontSize: 20 }} /></Tooltip>
@@ -366,6 +518,7 @@ export default function Dashboard() {
 
             {/* Main Chat Workspace */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minWidth: 0 }}>
+                {showGraph && <KnowledgeGraph onClose={() => setShowGraph(false)} />}
                 <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     {/* Header */}
                     <div style={{ padding: isMobile ? '12px 16px' : '16px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

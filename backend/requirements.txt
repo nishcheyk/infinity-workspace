@@ -1,26 +1,55 @@
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-ruff==0.1.14
-pydantic==2.5.3
-pydantic-settings==2.1.0
-python-multipart==0.0.6
+# Core Framew# Core
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+pydantic==2.10.6
+pydantic-settings==2.7.1
+python-multipart==0.0.20
 email-validator==2.1.0
-# Auth
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.0.1
-# Database
-motor==2.5.1
-pymongo==3.12.0
 
+# PyTorch CPU-only (to avoid DLL errors on Windows)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.0+cpu
+torchvision==0.17.0+cpu
+torchaudio==2.2.0+cpu
+bcrypt==4.0.1
+
+# Database - Python 3.12 compatible
+motor==3.6.0
+pymongo==4.9.0
 qdrant-client==1.7.0
+redis==5.0.1
+
 # AI / ML
-sentence-transformers==3.0.0
-httpx==0.26.0
+sentence-transformers==3.3.1
+langgraph==0.2.59
+langchain-core==0.3.29
+langchain-community==0.3.10
 groq==0.4.0
-# Parsing
-python-docx==1.1.0
-python-docx==1.1.0
-pypdf==3.17.4
-playwright==1.41.0
+google-generativeai==0.8.3
+
+# Web Scraping
+playwright==1.51.0
 beautifulsoup4==4.12.3
+
+# Task Queue
+celery[redis]==5.4.0
+
+# Voice & Audio
+edge-tts==6.1.9
+faster-whisper==1.0.3
+
+# NLP
+spacy==3.7.2
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz
+
+# Real-time Communication
+sse-starlette==2.0.0
+
+# Analytics
+scikit-learn==1.4.0
+numpy==1.26.3
+
+# Utilities
+python-dotenv==1.0.1

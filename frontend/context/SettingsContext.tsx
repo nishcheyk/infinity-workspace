@@ -13,6 +13,8 @@ interface SettingsContextType {
     secondaryColor: string;
     setSecondaryColor: (color: string) => void;
     availableVoices: SpeechSynthesisVoice[];
+    useBackendTTS: boolean;
+    setUseBackendTTS: (use: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -25,6 +27,8 @@ const SettingsContext = createContext<SettingsContextType>({
     secondaryColor: '#1890ff',
     setSecondaryColor: () => { },
     availableVoices: [],
+    useBackendTTS: false,
+    setUseBackendTTS: () => { },
 });
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
@@ -34,6 +38,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     const [primaryColor, setPrimaryColor] = useState('#722ed1');
     const [secondaryColor, setSecondaryColor] = useState('#1890ff');
     const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+    const [useBackendTTS, setUseBackendTTS] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Load settings from localStorage when user changes
@@ -44,11 +49,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             const savedAutoPlay = localStorage.getItem(`${prefix}settings_autoPlay`);
             const savedColor = localStorage.getItem(`${prefix}settings_primaryColor`);
             const savedSecondaryColor = localStorage.getItem(`${prefix}settings_secondaryColor`);
+            const savedUseBackendTTS = localStorage.getItem(`${prefix}settings_useBackendTTS`);
 
             setVoiceURI(savedVoice || null);
             setAutoPlay(savedAutoPlay === 'true');
             setPrimaryColor(savedColor || '#722ed1');
             setSecondaryColor(savedSecondaryColor || '#1890ff');
+            setUseBackendTTS(savedUseBackendTTS === 'true');
             setIsLoaded(true);
         } else if (!user) {
             // Reset to defaults if no user
@@ -56,6 +63,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             setAutoPlay(false);
             setPrimaryColor('#722ed1');
             setSecondaryColor('#1890ff');
+            setUseBackendTTS(false);
             setIsLoaded(false);
         }
     }, [user]);
@@ -68,8 +76,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             localStorage.setItem(`${prefix}settings_autoPlay`, String(autoPlay));
             localStorage.setItem(`${prefix}settings_primaryColor`, primaryColor);
             localStorage.setItem(`${prefix}settings_secondaryColor`, secondaryColor);
+            localStorage.setItem(`${prefix}settings_useBackendTTS`, String(useBackendTTS));
         }
-    }, [voiceURI, autoPlay, primaryColor, secondaryColor, isLoaded, user]);
+    }, [voiceURI, autoPlay, primaryColor, secondaryColor, useBackendTTS, isLoaded, user]);
 
     useEffect(() => {
         if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -97,7 +106,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             autoPlay, setAutoPlay,
             primaryColor, setPrimaryColor,
             secondaryColor, setSecondaryColor,
-            availableVoices
+            availableVoices,
+            useBackendTTS, setUseBackendTTS
         }}>
             {children}
         </SettingsContext.Provider>

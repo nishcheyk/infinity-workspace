@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import AuthFormItem from '../../components/ui/AuthFormItem';
+import AuthFormItem from '../../components/shared/AuthFormItem';
 
 const { Title, Text } = Typography;
 
@@ -94,6 +94,12 @@ export default function LoginPage() {
                             Sign In
                         </Button>
                     </Form.Item>
+
+                    <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                        <Link href="/forgot-password" style={{ color: 'var(--accent-primary)' }}>
+                            Forgot Password?
+                        </Link>
+                    </div>
 
                     <div style={{ textAlign: 'center' }}>
                         <Text style={{ color: 'rgba(255,255,255,0.45)' }}>

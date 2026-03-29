@@ -1,15 +1,11 @@
 from datetime import datetime
-from typing import Optional
+from typing import Annotated, Optional
 
-from bson import ObjectId
-from pydantic import BaseModel, EmailStr, Field
-
-
-from typing import Annotated, Any
-from pydantic import BaseModel, EmailStr, Field, BeforeValidator, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
 
 # Helper to automatically convert ObjectId to string
 PyObjectId = Annotated[str, BeforeValidator(str)]
+
 
 class MongoBaseModel(BaseModel):
     model_config = ConfigDict(

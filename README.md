@@ -1,129 +1,59 @@
-# Infinity Intelligence: Advanced Document RAG Platform
+# Infinity Intelligence: The Ultimate Knowledge OS
 
-## Overview
-Infinity Intelligence is a production-grade, high-performance Retrieval-Augmented Generation (RAG) system. It transforms private documents into a fluid, conversational knowledge base powered by the **'Infinity' AI Persona**. The platform leverages Groq Cloud for ultra-fast inference and Unstructured.io for lightning-quick ingestion.
-
-## Key Capabilities
-
-### 1. The 'Infinity' Persona
-*   **Natural Intelligence**: Moves beyond robotic RAG responses. Infinity speaks like a human expert, integrating document facts seamlessly into sophisticated dialogue.
-*   **Contextual Mastery**: Advanced history handling ensures the "flow" of deep conversations is never lost.
-*   **Citation Etiquette**: Intelligently balances natural language with source references, citing document names only when they add essential weight to the insight.
-
-### 2. High-Performance Architecture
-*   **Ultra-Fast Ingestion**: Implements the "Fast" parsing strategy, reducing document processing time from minutes to seconds.
-*   **Local-Cloud Hybrid**: Combines local `SentenceTransformers` for embedding privacy with `Groq Cloud` for state-of-the-art LLM inference.
-*   **Vector Excellence**: Qdrant-powered similarity search with strict per-user data isolation.
-
-### 3. Premium User Experience
-*   **Holographic Design**: A stunning Next.js 14+ interface featuring animated mesh gradients, glassmorphism, and a responsive mobile-first layout.
-*   **Neural Audio Bridge**: Optimized Text-to-Speech (TTS) for Chrome with "Priming" mechanisms to bypass strict autoplay policies.
-*   **Real-time Stability**: WebSocket connection management with exponential backoff and localized token synchronization.
-
-## Technical Architecture
-
-### Backend Stack
-*   **Core**: FastAPI (Python 3.10+)
-*   **AI Inference**: Groq API (Llama-3 models)
-*   **Embeddings**: Sentence-Transformers (all-MiniLM-L6-v2)
-*   **Databases**: MongoDB (Metadata), Qdrant (Vector Store)
-
-### Frontend Stack
-*   **Framework**: Next.js 14 (App Router)
-*   **Styling**: Vanilla CSS with Glassmorphism & Ant Design
-*   **Communication**: WebSockets (Real-time Streaming)
+Infinity is a state-of-the-art, high-performance **Knowledge Intelligence Platform**. It transforms static documents, recorded meetings, and website URLs into a fluid, conversational intelligence powered by a specialized **Multi-Agent RAG Architecture**.
 
 ---
 
-## Quick Start (Docker)
+## 🚀 Advanced Capabilities
 
-### 1. Environment Setup
-Create a `.env` file in the `backend/` directory:
-```env
-MONGODB_URL=mongodb://localhost:27017
-QDRANT_URL=http://localhost:6333
-GROQ_API_KEY=your_key_here
-GROQ_MODEL=llama-3.1-8b-instant
-SECRET_KEY=your_secret_key
-```
+### 1. Unified Intelligence (Interactive Fallback)
+*   **Private Mastery**: Semantic and lexical search across documents and URLs.
+*   **Interactive Web-Link**: If info isn't private, Infinity **asks for permission** to search the live web. Once confirmed, it triggers real-time data extraction.
+*   **Comparison Engine**: Specialized logic for comparing multiple vendors, versions, or complex reports side-by-side.
 
-### 2. Launch Services
-Launch the backend infrastructure and services:
+### 2. Multi-Modal Intake
+*   **Neural Audio Transcription**: Upload `.mp3` or `.wav` files. Powered by **Local Faster-Whisper**, Infinity transcribes and embeds audio for instant Q&A.
+*   **OCR Intelligence**: Images (`.png`, `.jpg`) are automatically parsed using computer vision to extract hidden text from diagrams or screenshots.
+*   **Smart Parsing**: PDF, DOCX, and TXT are processed in seconds using specialized "Fast" ingestion strategies.
+
+### 3. Smart Document Insights
+*   **Auto-Summarization**: Instant 3-point AI summaries for every document.
+*   **Semantic Tagging**: Automatic topic classification for organized workspaces.
+*   **Prompt Optimization**: Click AI-generated suggested questions to jumpstart your research.
+
+### 4. Specialized Worker Stack
+*   **worker_default**: High-speed embedding and analysis.
+*   **worker_scraping**: Dedicated browser-based extraction via Playwright.
+*   **worker_audio**: Specialized processing for neural transcription.
+
+---
+
+## 🛠 Tech Stack
+
+- **Inference**: Groq Cloud (Llama-3.1 8B/70B)
+- **Vector Core**: Qdrant (Hybrid Semantic + Full-Text Indexing)
+- **Metadata**: MongoDB
+- **Parsing**: Unstructured.io (Fast Strategy)
+- **Transcription**: Faster-Whisper (Local)
+- **Frontend**: Next.js 14, Ant Design, Glassmorphism CSS
+
+---
+
+## 📦 Deployment (Docker)
+
+Launch the entire specialized intelligence stack:
+
 ```bash
-cd backend
-docker-compose up -d --build
-```
-
-Launch the frontend application:
-```bash
-cd frontend
+# Set GROQ_API_KEY in backend/.env
 docker-compose up -d --build
 ```
 
 ---
 
-## Local Development (Native)
+## 🎯 Final Workflow guide
+1. **Upload**: Drop any file (Doc, Image, Audio) into the dock.
+2. **Observe**: Watch real-time status: `Processing` -> `Analyzing` -> `Completed`.
+3. **Insights**: Hover over a document for a 10-second summary.
+4. **Chat**: Mention specific files to compare them, or let Infinity decide.
 
-For manual setup without Docker, follow these steps.
-
-### 1. Prerequisites
-- Python 3.10+
-- Node.js 18+ & npm
-- MongoDB & Qdrant (You can still use Docker for these infrastructure services)
-  ```bash
-  # Start ONLY infrastructure
-  cd backend
-  docker-compose up -d mongo qdrant
-  ```
-
-### 2. Backend Setup
-1.  **Create Virtual Environment**:
-    ```bash
-    cd backend
-    python -m venv venv
-    .\venv\Scripts\activate  # Windows
-    # source venv/bin/activate # Linux/macOS
-    ```
-2.  **Install Dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  **Environment Variables**:
-    Ensure `backend/.env` exists (copy from `.env.example`).
-4.  **Run Server**:
-    ```bash
-    uvicorn app.main:app --reload --port 8000
-    ```
-
-### 3. Frontend Setup
-1.  **Install Dependencies**:
-    ```bash
-    cd frontend
-    npm install
-    ```
-2.  **Run Development Server**:
-    ```bash
-    npm run dev
-    ```
-    The application will be available at `http://localhost:3000`.
-
----
-
-## Deployment Configuration
-
-For production, ensure `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` in the frontend are pointed to your hosted backend instance.
-
-### Chrome TTS Support
-To enable AI voice on Chrome, click the **"Test"** button in the **Settings > Voice** modal. This "primes" the audio context, allowing subsequent AI responses to speak automatically.
-
-## Support & Git Workflow
-To commit and push all recent improvements, use the following commands:
-
-```bash
-git add .
-git commit -m "feat: Upgrade to Infinity Persona, stabilize WebSockets, and optimize Ingestion speed"
-git push origin main
-```
-
----
-**Powered by the Infinity Intelligence Engine**
+**Developed with Advanced Agentic Coding for the future of Intelligence.**

@@ -9,7 +9,7 @@ import { apiFetch } from '../../lib/api';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import AuthFormItem from '../../components/ui/AuthFormItem';
+import AuthFormItem from '../../components/shared/AuthFormItem';
 const { Title, Text } = Typography;
 
 const schema = yup.object().shape({

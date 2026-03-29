@@ -9,15 +9,13 @@ from app.api import deps
 from app.core import security
 from app.core.config import settings
 from app.db.mongodb import get_db
-from app.models.user import Token, UserCreate, UserInDB, UserResponse, RefreshToken
+from app.models.user import RefreshToken, Token, UserCreate, UserInDB, UserResponse
 
 router = APIRouter()
 
 
 @router.post("/signup", response_model=UserResponse)
-async def create_user(
-    user_in: UserCreate, db: AsyncIOMotorDatabase = Depends(get_db)
-) -> Any:
+async def create_user(user_in: UserCreate, db: AsyncIOMotorDatabase = Depends(get_db)) -> Any:
     """
     Create new user.
     """
@@ -34,9 +32,7 @@ async def create_user(
 
     db_user = UserInDB(**user_data, hashed_password=hashed_password)
 
-    result = await db.users.insert_one(
-        db_user.model_dump(by_alias=True, exclude={"id"})
-    )
+    result = await db.users.insert_one(db_user.model_dump(by_alias=True, exclude={"id"}))
 
     # Fetch the created user
     created_user = await db.users.find_one({"_id": result.inserted_id})
@@ -59,11 +55,9 @@ async def login_access_token(
         raise HTTPException(status_code=400, detail="Incorrect email or password")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        subject=str(user["_id"]), expires_delta=access_token_expires
-    )
+    access_token = security.create_access_token(subject=str(user["_id"]), expires_delta=access_token_expires)
     refresh_token = security.create_refresh_token(subject=str(user["_id"]))
-    
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -78,25 +72,22 @@ async def refresh_token(
     """
     Renew access token using a refresh token
     """
-    from jose import jwt, JWTError
+    from jose import JWTError, jwt
+
     try:
-        payload = jwt.decode(
-            body.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(body.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=400, detail="Invalid token type")
-        
+
         user_id: str = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=400, detail="Invalid token payload")
-            
+
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        new_access_token = security.create_access_token(
-            subject=user_id, expires_delta=access_token_expires
-        )
+        new_access_token = security.create_access_token(subject=user_id, expires_delta=access_token_expires)
         # We also issue a new refresh token (token rotation)
         new_refresh_token = security.create_refresh_token(subject=user_id)
-        
+
         return {
             "access_token": new_access_token,
             "refresh_token": new_refresh_token,

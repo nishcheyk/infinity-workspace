@@ -12,11 +12,16 @@
     "@ant-design/cssinjs": "^2.0.2",
     "@ant-design/icons": "^6.1.0",
     "@hookform/resolvers": "^5.2.2",
+    "@ricky0123/vad-react": "^0.0.36",
     "antd": "^6.1.4",
     "next": "16.1.1",
+    "onnxruntime-web": "^1.23.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-force-graph-3d": "^1.29.0",
     "react-hook-form": "^7.71.1",
+    "recharts": "^3.7.0",
+    "three": "^0.182.0",
     "yup": "^1.7.1"
   },
   "devDependencies": {
